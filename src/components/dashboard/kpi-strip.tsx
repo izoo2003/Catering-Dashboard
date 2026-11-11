@@ -19,7 +19,7 @@ import type { CateringEda, ChannelRoiRow } from "@/lib/leads/types";
 
 import { KpiCard } from "./kpi-card";
 
-export type DrillDown = "quality" | "wasted" | "lost";
+export type DrillDown = "quality" | "wasted" | "quoted" | "lost" | "won";
 
 interface KpiStripProps {
   eda: CateringEda | null;
@@ -121,7 +121,14 @@ export function KpiStrip({ eda, roi, spendAdjusted, activeDrillDown, onDrillDown
       key="quoted"
       title="Quotations Sent"
       icon={FileTextIcon}
+      tone="gold"
       value={counts.quotationsSent.total}
+      action={{
+        hint: "Click to view quoted clients →",
+        label: "Quotations Sent: view client roster",
+        active: activeDrillDown === "quoted",
+        onClick: () => onDrillDown("quoted"),
+      }}
       badge={
         <Badge variant="outline" className="tabular-nums">
           {formatPct(quotedPct)} of Quality Leads
@@ -152,7 +159,19 @@ export function KpiStrip({ eda, roi, spendAdjusted, activeDrillDown, onDrillDown
       />
     </KpiCard>,
 
-    <KpiCard key="won" title="Leads Won" icon={PartyPopperIcon} tone="won" value={counts.leadsWon.total}>
+    <KpiCard
+      key="won"
+      title="Leads Won"
+      icon={PartyPopperIcon}
+      tone="won"
+      value={counts.leadsWon.total}
+      action={{
+        hint: "Click to view won bookings →",
+        label: "Leads Won: view client roster",
+        active: activeDrillDown === "won",
+        onClick: () => onDrillDown("won"),
+      }}
+    >
       <Badge className="bg-won-soft text-won tabular-nums">
         {formatNumber(counts.leadsWon.whatsappAds)} Phone/WhatsApp, {formatNumber(counts.leadsWon.website)} Website
       </Badge>

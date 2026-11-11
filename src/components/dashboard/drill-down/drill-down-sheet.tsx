@@ -10,7 +10,9 @@ import type { CateringEda, DateKey } from "@/lib/leads/types";
 import type { DrillDown } from "../kpi-strip";
 import { LostLeadsPanel } from "./lost-leads-panel";
 import { QualityLeadsPanel, type QualityTab } from "./quality-leads-panel";
+import { QuotedLeadsPanel } from "./quoted-leads-panel";
 import { WastedLeadsPanel } from "./wasted-leads-panel";
+import { WonLeadsPanel } from "./won-leads-panel";
 
 const HEADINGS: Record<DrillDown, { eyebrow: string; title: string; description: string }> = {
   quality: {
@@ -23,10 +25,20 @@ const HEADINGS: Record<DrillDown, { eyebrow: string; title: string; description:
     title: "Unanswered & Not Interested",
     description: "Inquiries that never answered or replied, or said they were not interested in catering.",
   },
+  quoted: {
+    eyebrow: "Quotations Sent",
+    title: "Quotes Awaiting a Decision",
+    description: "Interested clients who already received a quotation and have not booked or been marked lost.",
+  },
   lost: {
     eyebrow: "Leads Lost",
     title: "Call Center Post-Quotation Loss Analysis",
     description: "Clients who did not convert, with the recorded loss reason and call notes.",
+  },
+  won: {
+    eyebrow: "Leads Won",
+    title: "Confirmed Bookings",
+    description: "Clients who confirmed a booking, from phone, WhatsApp, ads, and the website.",
   },
 };
 
@@ -75,7 +87,11 @@ export function LeadDrillDownSheet({ eda, drillDown, qualityTab, today, onOpenCh
                   />
                 )}
                 {shown === "wasted" && <WastedLeadsPanel key={eda.range.from + eda.range.to} leads={eda.wastedRoster} />}
+                {shown === "quoted" && (
+                  <QuotedLeadsPanel key={eda.range.from + eda.range.to} leads={eda.qualityRoster.sentQuotationClients} />
+                )}
                 {shown === "lost" && <LostLeadsPanel key={eda.range.from + eda.range.to} roster={eda.lostRoster} />}
+                {shown === "won" && <WonLeadsPanel key={eda.range.from + eda.range.to} leads={eda.wonRoster} />}
               </div>
             </ScrollArea>
           </>
