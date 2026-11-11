@@ -1,0 +1,47 @@
+---
+description: Colette catering brand, dashboard UI skills, and lead state machine
+alwaysApply: true
+---
+
+# Colette Catering EDA & Reporting Dashboard
+
+Follow these rules for every Colette catering dashboard change.
+
+## Brand
+
+Upscale French-Mediterranean bistro and catering aesthetic.
+
+- Background: warm alabaster / ivory `#FAF8F5`
+- Primary text and headers: Parisian forest green `#1C352D` and espresso `#1E1B18`
+- Accents and quotations: champagne gold `#C5A059`
+- Wasted and lost leads: terracotta `#9E3B33`
+- Won leads: sage `#2E6F40`
+- Titles and report headers: editorial serif (`Playfair Display` or `Cormorant Garamond`)
+- KPIs, tables, and PKR values: geometric sans (`Plus Jakarta Sans` or `Inter`) with `tabular-nums`
+
+## UI skills
+
+Invoke and combine the installed `shadcn`, `magic-ui`, and `shadcn-magicui` skills before building dashboard UI.
+
+- `NumberTicker` for top-level KPI metrics and PKR spend counters
+- `MagicCard` or `BorderBeam` on interactive KPI cards (Quality Leads, Lost Leads)
+- `BlurFade` for staggered entrance of dashboard sections and charts
+- `BentoGrid` for the main EDA layout
+- `Popover` + `Calendar` (range mode) for the global From / To date filter
+- `Sheet` or `Dialog` + `Tabs` + `Table` + `Badge` for client roster drill-downs
+- `ChartContainer`, `ChartTooltip`, and `ChartTooltipContent` for funnel, breakdown, and CPL/CPW charts
+
+## Lead state machine
+
+Recalculate every metric from the selected From / To range loaded from Google Sheets.
+
+1. **Total Leads**: all incoming catering inquiries (WhatsApp / Social / Ads + Website).
+2. **Wasted Leads**: ads/social leads that did not answer or reply ("No answer / useless leads") or said "Not interested in catering".
+3. **Quality Leads** (clickable): interested leads in the call-center follow-up loop. On click, split into:
+   - `Pending Quotation`: interested clients who still need a quotation
+   - `Quotation Sent`: interested clients who already received a quotation
+4. **Leads Lost** (clickable): quoted or follow-up clients who did not convert, with a recorded loss reason:
+   - `Management Side Loss`: location issue, date overlap, or guest count under the minimum (for example under 30 guests)
+   - `Call Center / Follow-up Loss`: unresponsive after quote, pricing objections, competitor chosen, or delayed follow-up
+5. **Leads Won**: confirmed bookings, tracked by source (Phone / WhatsApp Ads vs Website).
+6. **Channel ROI** (WhatsApp / Social Ads vs Website): Spend (PKR), Leads, Cost Per Lead (`Spend / Leads`), Leads Won, Cost Per Won Lead (`Spend / Leads Won`).
