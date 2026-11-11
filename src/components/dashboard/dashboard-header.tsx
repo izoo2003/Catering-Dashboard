@@ -1,22 +1,18 @@
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { formatRangeLabel } from "@/lib/format";
-import type { CateringEdaMeta, DateKeyRange } from "@/lib/leads/types";
+import type { CateringEdaMeta } from "@/lib/leads/types";
 
 interface DashboardHeaderProps {
-  period: DateKeyRange | null;
   meta: CateringEdaMeta | null;
 }
 
 const fetchedTime = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" });
 
-export function DashboardHeader({ period, meta }: DashboardHeaderProps) {
+export function DashboardHeader({ meta }: DashboardHeaderProps) {
   return (
     <header className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 pt-10 pb-6 sm:px-6 lg:px-10 lg:pt-14">
-      <p className="text-xs font-semibold tracking-[0.28em] text-gold-ink uppercase">
-        Reporting period
-        {period && <span className="tabular-nums"> · {formatRangeLabel(period.from, period.to)}</span>}
-      </p>
+      <p className="text-xs font-semibold tracking-[0.28em] text-gold-ink uppercase">All inquiries</p>
 
       <h1 className="font-heading text-3xl leading-tight text-balance text-primary sm:text-4xl lg:text-5xl">
         <span className="font-semibold tracking-[0.06em]">COLETTE CATERING</span>{" "}

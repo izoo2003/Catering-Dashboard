@@ -175,7 +175,7 @@ export function KpiStrip({ eda, roi, spendAdjusted, activeDrillDown, onDrillDown
         </Badge>
       </div>
       {total.spendPKR === 0 && !spendAdjusted ? (
-        <p className="text-sm text-muted-foreground">No spend recorded for this period. Add it under Channel Spend.</p>
+        <p className="text-sm text-muted-foreground">No spend recorded. Add it under Channel Spend.</p>
       ) : (
         <Breakdown
           items={[

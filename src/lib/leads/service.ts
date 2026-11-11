@@ -1,6 +1,6 @@
 import "server-only";
 
-import { toDateKeyRange } from "./dates";
+import { toDateKey, toDateKeyRange } from "./dates";
 import { computeCateringEda, datasetCoverage } from "./eda";
 import { fetchSheetValues, fetchWorkbookTabs, readGoogleSheetsConfig } from "./google-sheets";
 import { generateMockDataset } from "./mock-data";
@@ -91,18 +91,22 @@ export async function getLeadDataset({ fresh = false }: { fresh?: boolean } = {}
   return inFlight;
 }
 
+/** `null` covers every inquiry in the dataset. */
 export async function getCateringEda(
-  range: DateRange | DateKeyRange,
+  range: DateRange | DateKeyRange | null,
   options?: { fresh?: boolean },
 ): Promise<CateringEdaResponse> {
   const dataset = await getLeadDataset(options);
+  const coverage = datasetCoverage(dataset.leads);
+  const today = toDateKey(new Date());
+  const resolved = range ? toDateKeyRange(range) : (coverage ?? { from: today, to: today });
   return {
     meta: {
       source: dataset.source,
       fetchedAt: dataset.fetchedAt,
       warnings: dataset.warnings,
-      coverage: datasetCoverage(dataset.leads),
+      coverage,
     },
-    eda: computeCateringEda(dataset, toDateKeyRange(range)),
+    eda: computeCateringEda(dataset, resolved),
   };
 }

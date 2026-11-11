@@ -1,76 +1,63 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import { MotionConfig } from "motion/react";
 import { TriangleAlertIcon } from "lucide-react";
 
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCateringEda } from "@/hooks/use-catering-eda";
+import { fetchCateringEda, useCateringEda } from "@/hooks/use-catering-eda";
 import {
-  isSameSpendOverride,
+  readSpendOverride,
   saveSpendOverride,
   useSpendOverride,
   type SpendOverride,
 } from "@/hooks/use-spend-overrides";
-import { fromDateKey, toDateKey } from "@/lib/leads/dates";
+import { toDateKey } from "@/lib/leads/dates";
 import { buildChannelRoi } from "@/lib/leads/eda";
-import { rangeForPreset, type DatePreset } from "@/lib/leads/presets";
-import type { DateKey, DateKeyRange } from "@/lib/leads/types";
+import type { CateringEda, ChannelRoiRow, DateKey, DateKeyRange } from "@/lib/leads/types";
 
 import { DashboardFilterBar } from "./dashboard-filter-bar";
 import { DashboardHeader } from "./dashboard-header";
-import type { DraftRange } from "./date-range-filter";
 import { LeadDrillDownSheet } from "./drill-down/drill-down-sheet";
 import type { QualityTab } from "./drill-down/quality-leads-panel";
 import { EdaBentoGrid } from "./eda/eda-bento-grid";
 import { KpiStrip, type DrillDown } from "./kpi-strip";
+import { PeriodRangeDialog } from "./report/period-range-dialog";
 import { PeriodReportDialog } from "./report/period-report-dialog";
-
-interface DraftFilters {
-  range: DraftRange;
-  preset: DatePreset;
-  /** `null` until the user edits spend; then it replaces the saved override on generate. */
-  spendEdits: SpendOverride | null;
-}
-
-const DEFAULT_PRESET = "last-30-days";
 
 type ReportView = "dashboard" | "analysis";
 
+interface ReportSnapshot {
+  eda: CateringEda;
+  roi: ChannelRoiRow[];
+  spendAdjusted: boolean;
+}
+
 const subscribeNever = () => () => {};
 
-/** Today in the browser's time zone; `null` while server rendering, so presets never mismatch on hydration. */
+/** Today in the browser's time zone; `null` while server rendering, so the calendar never mismatches on hydration. */
 function useToday(): DateKey | null {
   return useSyncExternalStore(subscribeNever, () => toDateKey(new Date()), () => null);
 }
 
-const sameRange = (a: DateKeyRange, b: DateKeyRange) => a.from === b.from && a.to === b.to;
-
 export function DashboardShell() {
   const today = useToday();
-  const [draftState, setDraft] = useState<DraftFilters | null>(null);
-  const [appliedState, setApplied] = useState<DateKeyRange | null>(null);
   const [drillDown, setDrillDown] = useState<DrillDown | null>(null);
   const [qualityTab, setQualityTab] = useState<QualityTab>("pending");
   const [view, setView] = useState<ReportView>("dashboard");
-  const [reportRequested, setReportRequested] = useState(false);
+  const [rangeOpen, setRangeOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [report, setReport] = useState<ReportSnapshot | null>(null);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const reportRequest = useRef<AbortController | null>(null);
 
-  const defaultRange = today ? rangeForPreset(DEFAULT_PRESET, today) : null;
-  const draft = draftState ?? (defaultRange && { range: defaultRange, preset: DEFAULT_PRESET, spendEdits: null });
-  const applied = appliedState ?? defaultRange;
-  const draftRange = draft?.range.from && draft.range.to ? { from: draft.range.from, to: draft.range.to } : null;
+  const { eda, meta, error, refresh } = useCateringEda("all");
 
-  const { eda, meta, error, isLoading, refresh } = useCateringEda(
-    applied ? { from: fromDateKey(applied.from), to: fromDateKey(applied.to) } : undefined,
-  );
-
-  const savedDraftSpend = useSpendOverride(draftRange);
-  const edaSpendOverride = useSpendOverride(eda ? { from: eda.range.from, to: eda.range.to } : null);
-
+  const dashboardRange = eda ? { from: eda.range.from, to: eda.range.to } : null;
+  const spendOverride = useSpendOverride(dashboardRange);
   const sheetSpend = eda && {
     whatsappAds: eda.channelRoi.find((row) => row.key === "whatsappAds")?.spendPKR ?? 0,
     website: eda.channelRoi.find((row) => row.key === "website")?.spendPKR ?? 0,
@@ -78,22 +65,14 @@ export function DashboardShell() {
   const roi =
     eda && sheetSpend
       ? buildChannelRoi(eda.counts, {
-          whatsappAds: edaSpendOverride.whatsappAds ?? sheetSpend.whatsappAds,
-          website: edaSpendOverride.website ?? sheetSpend.website,
+          whatsappAds: spendOverride.whatsappAds ?? sheetSpend.whatsappAds,
+          website: spendOverride.website ?? sheetSpend.website,
         })
       : null;
-  const spendAdjusted = edaSpendOverride.whatsappAds !== null || edaSpendOverride.website !== null;
+  const spendAdjusted = spendOverride.whatsappAds !== null || spendOverride.website !== null;
 
-  const rangeChanged = !draftRange || !applied || !sameRange(draftRange, applied);
-  const spendChanged = draft?.spendEdits != null && !isSameSpendOverride(draft.spendEdits, savedDraftSpend);
-  const hasUnappliedChanges = rangeChanged || spendChanged;
-
-  function handleRangeChange(range: DraftRange, preset: DatePreset) {
-    if (draft) setDraft({ ...draft, range, preset });
-  }
-
-  function handleSpendChange(spendEdits: SpendOverride) {
-    if (draft) setDraft({ ...draft, spendEdits });
+  function handleSpendChange(next: SpendOverride) {
+    if (dashboardRange) saveSpendOverride(dashboardRange, next);
   }
 
   function openDrillDown(target: DrillDown, tab?: QualityTab) {
@@ -101,60 +80,67 @@ export function DashboardShell() {
     if (target === "quality") setQualityTab(tab ?? "pending");
   }
 
-  function handleGenerate() {
-    if (!draft || !draftRange) return;
-    setReportRequested(true);
-    if (!hasUnappliedChanges) {
-      refresh();
-      return;
+  function handleRangeOpenChange(open: boolean) {
+    if (!open) {
+      reportRequest.current?.abort();
+      reportRequest.current = null;
+      setReportLoading(false);
+      setReportError(null);
     }
-    if (draft.spendEdits) saveSpendOverride(draftRange, draft.spendEdits);
-    setApplied(draftRange);
-    setDraft({ ...draft, spendEdits: null });
-    setDrillDown(null);
+    setRangeOpen(open);
   }
 
-  useEffect(() => {
-    if (!reportRequested || isLoading || error || !eda || !roi || !applied) return;
-    if (!sameRange({ from: eda.range.from, to: eda.range.to }, applied)) return;
-    setReportOpen(true);
-    setReportRequested(false);
-  }, [applied, eda, error, isLoading, reportRequested, roi]);
+  async function handleReportRange(range: DateKeyRange) {
+    reportRequest.current?.abort();
+    const controller = new AbortController();
+    reportRequest.current = controller;
+    setReportLoading(true);
+    setReportError(null);
+
+    try {
+      const response = await fetchCateringEda(range, { signal: controller.signal });
+      if (controller.signal.aborted) return;
+      const sheet = {
+        whatsappAds: response.eda.channelRoi.find((row) => row.key === "whatsappAds")?.spendPKR ?? 0,
+        website: response.eda.channelRoi.find((row) => row.key === "website")?.spendPKR ?? 0,
+      };
+      const override = readSpendOverride(range);
+      setReport({
+        eda: response.eda,
+        roi: buildChannelRoi(response.eda.counts, {
+          whatsappAds: override.whatsappAds ?? sheet.whatsappAds,
+          website: override.website ?? sheet.website,
+        }),
+        spendAdjusted: override.whatsappAds !== null || override.website !== null,
+      });
+      setRangeOpen(false);
+      setReportOpen(true);
+    } catch (cause) {
+      if (controller.signal.aborted) return;
+      setReportError(cause instanceof Error ? cause.message : "Could not build the period report.");
+    } finally {
+      if (!controller.signal.aborted) setReportLoading(false);
+    }
+  }
 
   return (
     <MotionConfig reducedMotion="user">
       <div data-dashboard="" className="flex flex-1 flex-col">
-        <DashboardHeader period={eda?.range ?? applied} meta={meta} />
+        <DashboardHeader meta={meta} />
 
-        {today && draft ? (
-          <DashboardFilterBar
-            today={today}
-            range={draft.range}
-            preset={draft.preset}
-            onRangeChange={handleRangeChange}
-            spend={draft.spendEdits ?? savedDraftSpend}
-            sheetSpend={draftRange && eda && sameRange(draftRange, eda.range) ? sheetSpend : null}
-            onSpendChange={handleSpendChange}
-            hasUnappliedChanges={hasUnappliedChanges}
-            canGenerate={draftRange !== null}
-            isLoading={isLoading}
-            onGenerate={handleGenerate}
-          />
-        ) : (
-          <div className="border-y">
-            <div className="mx-auto flex w-full max-w-7xl gap-2 px-4 py-3 sm:px-6 lg:px-10">
-              <Skeleton className="h-9 w-64" />
-              <Skeleton className="h-9 w-40" />
-              <Skeleton className="ml-auto h-9 w-52" />
-            </div>
-          </div>
-        )}
+        <DashboardFilterBar
+          spend={spendOverride}
+          sheetSpend={sheetSpend ?? null}
+          onSpendChange={handleSpendChange}
+          spendDisabled={!dashboardRange}
+          onGenerate={() => handleRangeOpenChange(true)}
+        />
 
         <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:px-10">
           {error && (
             <Alert variant="destructive">
               <TriangleAlertIcon />
-              <AlertTitle>Could not load the period report</AlertTitle>
+              <AlertTitle>Could not load inquiries</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
               <AlertAction>
                 <Button size="sm" variant="outline" onClick={refresh}>
@@ -202,11 +188,22 @@ export function DashboardShell() {
           </Tabs>
         </main>
 
-        {eda && roi && (
+        {today && (
+          <PeriodRangeDialog
+            open={rangeOpen}
+            onOpenChange={handleRangeOpenChange}
+            today={today}
+            isLoading={reportLoading}
+            error={reportError}
+            onGenerate={handleReportRange}
+          />
+        )}
+
+        {report && (
           <PeriodReportDialog
-            eda={eda}
-            roi={roi}
-            spendAdjusted={spendAdjusted}
+            eda={report.eda}
+            roi={report.roi}
+            spendAdjusted={report.spendAdjusted}
             today={today}
             open={reportOpen}
             onOpenChange={setReportOpen}

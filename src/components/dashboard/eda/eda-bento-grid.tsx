@@ -43,8 +43,8 @@ export function EdaBentoGrid({ eda, roi, spendAdjusted, onOpenQuality, onOpenLos
           <EmptyMedia variant="icon">
             <ChartColumnIcon />
           </EmptyMedia>
-          <EmptyTitle>No leads in this period</EmptyTitle>
-          <EmptyDescription>Widen the date range, then generate the report to see the funnel, losses, and channel costs.</EmptyDescription>
+          <EmptyTitle>No inquiries yet</EmptyTitle>
+          <EmptyDescription>Leads from the sheet will show here once an inquiry date is recorded.</EmptyDescription>
         </EmptyHeader>
       </Empty>
     );

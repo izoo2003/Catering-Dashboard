@@ -19,9 +19,10 @@ import { formatNumber, formatPKR } from "@/lib/format";
 
 interface ChannelSpendPopoverProps {
   value: SpendOverride;
-  /** Spend sheet figures for the draft range, when they are already loaded. */
+  /** Spend sheet figures for every inquiry, once they are loaded. */
   sheetSpend: { whatsappAds: number; website: number } | null;
   onChange: (value: SpendOverride) => void;
+  disabled?: boolean;
 }
 
 const CHANNELS = [
@@ -35,12 +36,12 @@ function parseAmount(raw: string): number | null {
   return Number.isFinite(amount) && amount >= 0 ? Math.round(amount) : null;
 }
 
-export function ChannelSpendPopover({ value, sheetSpend, onChange }: ChannelSpendPopoverProps) {
+export function ChannelSpendPopover({ value, sheetSpend, onChange, disabled }: ChannelSpendPopoverProps) {
   const adjusted = value.whatsappAds !== null || value.website !== null;
 
   return (
     <Popover>
-      <PopoverTrigger render={<Button variant="outline" size="lg" />}>
+      <PopoverTrigger render={<Button variant="outline" size="lg" disabled={disabled} />}>
         <WalletIcon data-icon="inline-start" />
         Channel Spend
         {adjusted && <Badge variant="secondary">Adjusted</Badge>}
@@ -48,9 +49,9 @@ export function ChannelSpendPopover({ value, sheetSpend, onChange }: ChannelSpen
 
       <PopoverContent align="start" className="w-80 gap-4 p-4">
         <PopoverHeader>
-          <PopoverTitle className="font-heading text-base">Channel spend for this period</PopoverTitle>
+          <PopoverTitle className="font-heading text-base">Channel spend</PopoverTitle>
           <PopoverDescription>
-            Amounts in PKR. Leave a field blank to use the Spend sheet. Changes apply when you generate the report.
+            Amounts in PKR for every inquiry on the dashboard. Leave a field blank to use the Spend sheet.
           </PopoverDescription>
         </PopoverHeader>
 
@@ -77,7 +78,7 @@ export function ChannelSpendPopover({ value, sheetSpend, onChange }: ChannelSpen
               <FieldDescription className="tabular-nums">
                 {sheetSpend
                   ? `Spend sheet: ${formatPKR(sheetSpend[key])}`
-                  : "The sheet figure shows once this period is generated."}
+                  : "The sheet figure shows once inquiries have loaded."}
               </FieldDescription>
             </Field>
           ))}

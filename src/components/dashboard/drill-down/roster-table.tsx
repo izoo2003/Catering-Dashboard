@@ -28,11 +28,11 @@ export function RosterTable({ caption, leads, columns, filtered }: RosterTablePr
       <Empty className="border">
         <EmptyHeader>
           <EmptyMedia variant="icon">{filtered ? <SearchXIcon aria-hidden /> : <InboxIcon aria-hidden />}</EmptyMedia>
-          <EmptyTitle>{filtered ? "No clients match these filters" : "No clients in this period"}</EmptyTitle>
+          <EmptyTitle>{filtered ? "No clients match these filters" : "No clients in this list"}</EmptyTitle>
           <EmptyDescription>
             {filtered
-              ? "Clear the search or switch channels to see more clients in this period."
-              : "Pick a wider From – To range to see more clients."}
+              ? "Clear the search or switch channels to see more clients."
+              : "None of the inquiries are in this list."}
           </EmptyDescription>
         </EmptyHeader>
       </Empty>

@@ -6,11 +6,17 @@ import { toDateKey, toDateKeyRange } from "@/lib/leads/dates";
 import type { CateringEdaResponse, DateKeyRange, DateRange } from "@/lib/leads/types";
 
 export async function fetchCateringEda(
-  range: DateRange | DateKeyRange,
+  range: DateRange | DateKeyRange | "all",
   { refresh = false, signal }: { refresh?: boolean; signal?: AbortSignal } = {},
 ): Promise<CateringEdaResponse> {
-  const { from, to } = toDateKeyRange(range);
-  const params = new URLSearchParams({ from, to });
+  const params = new URLSearchParams();
+  if (range === "all") {
+    params.set("all", "1");
+  } else {
+    const { from, to } = toDateKeyRange(range);
+    params.set("from", from);
+    params.set("to", to);
+  }
   if (refresh) params.set("refresh", "1");
 
   const response = await fetch(`/api/catering/eda?${params}`, { signal, cache: "no-store" });
@@ -28,24 +34,26 @@ type Result =
   | { key: string; data: null; error: string };
 
 /**
- * Loads date-filtered catering EDA from the API. Pass a partial range while a range picker
- * is mid-selection; the last result stays on screen until the next one arrives.
+ * Loads catering EDA from the API. `"all"` covers every inquiry. A partial range waits
+ * until both ends are set; the last result stays on screen until the next one arrives.
  */
-export function useCateringEda(range: Partial<DateRange> | undefined) {
-  const from = range?.from ? toDateKey(range.from) : null;
-  const to = range?.to ? toDateKey(range.to) : null;
+export function useCateringEda(range: Partial<DateRange> | "all" | undefined) {
+  const all = range === "all";
+  const from = !all && range?.from ? toDateKey(range.from) : null;
+  const to = !all && range?.to ? toDateKey(range.to) : null;
 
   const [refreshCount, setRefreshCount] = useState(0);
   const [result, setResult] = useState<Result | null>(null);
   const [lastData, setLastData] = useState<CateringEdaResponse | null>(null);
 
-  const requestKey = from && to ? `${from}|${to}|${refreshCount}` : null;
+  const requestKey = all ? `all|${refreshCount}` : from && to ? `${from}|${to}|${refreshCount}` : null;
 
   useEffect(() => {
-    if (!from || !to || !requestKey) return;
+    const query = all ? ("all" as const) : from && to ? { from, to } : null;
+    if (!requestKey || !query) return;
     const controller = new AbortController();
 
-    fetchCateringEda({ from, to }, { refresh: refreshCount > 0, signal: controller.signal }).then(
+    fetchCateringEda(query, { refresh: refreshCount > 0, signal: controller.signal }).then(
       (data) => {
         setResult({ key: requestKey, data, error: null });
         setLastData(data);
@@ -61,7 +69,7 @@ export function useCateringEda(range: Partial<DateRange> | undefined) {
     );
 
     return () => controller.abort();
-  }, [from, to, requestKey, refreshCount]);
+  }, [all, from, to, requestKey, refreshCount]);
 
   const refresh = useCallback(() => setRefreshCount((n) => n + 1), []);
   const settled = result !== null && result.key === requestKey;

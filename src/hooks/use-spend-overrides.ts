@@ -42,6 +42,11 @@ export function isSameSpendOverride(a: SpendOverride, b: SpendOverride) {
   return a.whatsappAds === b.whatsappAds && a.website === b.website;
 }
 
+export function readSpendOverride(range: DateKeyRange): SpendOverride {
+  if (typeof window === "undefined") return NO_SPEND_OVERRIDE;
+  return parse(localStorage.getItem(storageKey(range)));
+}
+
 export function saveSpendOverride(range: DateKeyRange, override: SpendOverride) {
   const key = storageKey(range);
   if (override.whatsappAds === null && override.website === null) localStorage.removeItem(key);
